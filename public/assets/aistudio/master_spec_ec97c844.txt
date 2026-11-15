@@ -1,0 +1,107 @@
+hVISA INSIGHT — GOOGLE AI STUDIO MASTER SPEC
+Version: 1.0 | Purpose: hackathon prototype | Data: synthetic demonstration data only
+
+1. PRODUCT PURPOSE
+Build a responsive web application called hVISA Insight: a PAP-AUC analysis and quality-assurance workspace for qualified microbiology laboratory users studying heterogeneous vancomycin-intermediate Staphylococcus aureus (hVISA).
+
+The app supports structured entry/import of population-analysis observations, conversion of colony counts to viable counts, population-profile visualisation, trapezoidal AUC calculation, comparison with the Mu3 reference strain, quality checks, reproducible run records and report export.
+
+It is NOT a clinical diagnostic device. It must not recommend antibiotics, treatment, patient management or claim to diagnose an infection. All sample records supplied with the prototype are synthetic and must be visibly labelled DEMO / SYNTHETIC.
+
+2. CORE USERS AND PERMISSIONS
+- Lab Analyst: create experiments, enter/import observations, run calculations, view charts and draft reports.
+- Reviewer / Microbiologist: review calculations, inspect quality flags, add comments and mark a run reviewed. Review status is not the same as clinical confirmation.
+- Auditor: read-only access to experiment metadata, input records, calculation version, change history and exported reports.
+For the prototype, provide a role switcher to demonstrate these permissions. Do not implement real authentication unless feasible; clearly label demo role switching.
+
+3. CORE WORKFLOW
+A. Create an experiment with run ID, date, protocol profile/version, analyst initials or non-identifying user ID, reference strain ID (Mu3 / ATCC 700698), and optional notes.
+B. Add test isolate(s) and the Mu3 reference observations from the SAME experimental run.
+C. Enter observations in a table or import CSV. Each observation contains: strain_id, strain_role (TEST or REFERENCE_MU3), vancomycin_concentration_mg_L, replicate_id, dilution_fraction, plated_volume_ml, colony_count.
+D. Validate inputs and show warnings before calculation.
+E. Convert valid colony counts to CFU/mL and log10(CFU/mL).
+F. Plot log10(CFU/mL) against vancomycin concentration for each test isolate and Mu3.
+G. Calculate trapezoidal AUC for each profile and test-isolate AUC / Mu3 AUC.
+H. Display the ratio, configured interpretation band, quality flags and calculation details.
+I. Save a versioned analysis record and export a report.
+
+4. SCIENTIFIC CALCULATION RULES
+Use the laboratory's selected protocol profile. Do not silently impose one universal protocol: concentration series, dilution strategy, plated volume, incubation conditions, replicate handling and interpretation thresholds may vary between protocols.
+
+For each observation:
+- dilution_fraction is the actual fraction plated (e.g. 0.001 for a 10^-3 dilution).
+- CFU_per_ml = colony_count / (plated_volume_ml * dilution_fraction).
+- log10_CFU_per_ml = log10(CFU_per_ml), only when colony_count > 0.
+- Zero colonies are not log10(0). Preserve zero as a censored / below-detection observation and require the protocol profile to specify its handling. Do not invent a pseudocount by default.
+
+For each strain profile:
+- Aggregate replicate observations at the same vancomycin concentration using the protocol-selected method (default: arithmetic mean of valid log10_CFU_per_ml values; show replicate-level values).
+- Sort points by increasing vancomycin concentration.
+- AUC = sum over adjacent points of ((y_i + y_(i+1)) / 2) * (x_(i+1) - x_i), using trapezoidal integration where x is vancomycin concentration (mg/L) and y is log10(CFU/mL).
+- PAP_AUC_ratio = AUC_test_isolate / AUC_Mu3_reference from the same run.
+- If reference AUC is missing, zero, invalid or from a different run/protocol, do not calculate a ratio.
+
+Interpretation display (configurable protocol setting, not hard-coded clinical truth):
+- Ratio < 0.90: below the commonly used hVISA PAP-AUC threshold.
+- Ratio >= 0.90 and <= 1.30: compatible with hVISA range in commonly cited PAP-AUC interpretation schemes.
+- Ratio > 1.30: flag for expert review as potentially within a VISA-associated range; do not label conclusively.
+Show the exact threshold source/profile and an explicit disclaimer. ICMR Bacteriology SOP (2nd ed., 2019) describes test-isolate AUC divided by Mu3 AUC and uses >=0.9 as hVISA. Published methods differ in protocol details and sometimes describe >1.3 as VISA. Let the reviewer configure the upper boundary and wording.
+
+5. QUALITY-ASSURANCE RULES
+Show actionable flags; never silently alter user data.
+- Missing Mu3 reference profile or missing concentration points.
+- Test and reference use different concentration grids or incompatible protocol profiles.
+- Negative colony count, negative concentration, non-positive plated volume, or dilution_fraction outside (0,1].
+- Colony count not an integer.
+- Duplicate replicate key for same run/strain/concentration/replicate.
+- Zero-colony observations requiring protocol-defined handling.
+- Implausible or inconsistent dilution/volume entries.
+- Missing replicate observations where the selected protocol expects them.
+- AUC ratio cannot be computed due to incomplete/invalid data.
+- Manual edits after calculation: invalidate prior calculation and require recalculation.
+Provide severity levels: BLOCKING (cannot calculate), WARNING (review needed), INFO (metadata). Each flag should identify the row/field and explain how to resolve it.
+
+6. REQUIRED SCREENS
+1) Dashboard: experiment summary, create experiment, recent runs, clear DEMO DATA banner.
+2) Experiment workspace: metadata, editable observation grid, CSV import, protocol selector, validate and calculate controls.
+3) PAP-AUC analysis: interactive chart with test isolate and Mu3 profiles; concentration on x-axis, log10 CFU/mL on y-axis; AUC values, ratio and interpretation band; show calculation details.
+4) QA review: list of blocking errors/warnings, row-level references, reviewer comments and review status.
+5) Report view: experiment metadata, protocol version, input summary, chart, AUC table, ratio, interpretation wording, QA flags, calculation timestamp/version and limitations. Export PDF and CSV if feasible.
+
+7. UI / DESIGN
+- Professional scientific software, clean light background, navy/blue primary accents, restrained teal.
+- Use clear tables, compact cards and legible chart axes. Avoid decorative gradients, excessive animations and fake medical dashboards.
+- Status colours: green = calculation complete / reviewed; amber = warning / pending review; red = blocking validation error. Never use colour alone; include text labels and icons.
+- Responsive desktop-first layout, usable on tablet.
+- Every chart must show units, legend and protocol context.
+- Include a visible synthetic-data/demo badge on all demo records.
+
+8. DATA AND AUDITABILITY
+- Store experiment, protocol profile, strains, observations, calculation outputs, QA flags, review comments and audit events.
+- Preserve raw entered observations. Derived values must be reproducible from raw inputs and calculation version.
+- Record who changed what and when (demo identity is acceptable for prototype).
+- Do not store patient names, hospital numbers or other patient-identifying information.
+- Include export of raw synthetic observations and derived summary.
+
+9. DEMO MODE
+Add a "Load synthetic demo" action that loads sample_data.csv and demonstrates the complete workflow. Make it obvious that values are fictional and must not be used for clinical or research conclusions.
+Include at least one clean run and one intentionally incomplete/invalid run if time permits, so QA flags can be demonstrated. Never fabricate real study findings.
+
+10. TECHNICAL EXPECTATIONS
+Build a working full-stack-feeling prototype, not just a static landing page.
+Use a maintainable component structure and a persistent local database/storage layer if supported; otherwise use browser local storage and clearly state that it is local demo persistence.
+Keep calculations in a separate tested utility module, not embedded in UI components.
+Add unit tests for CFU/mL conversion, log conversion, trapezoidal AUC, ratio calculation, threshold boundaries and invalid/missing reference handling.
+Do not use an LLM to calculate AUC or classify isolates. Use deterministic code. AI may assist with plain-language explanations of QA flags, but it must not change data or generate clinical advice.
+
+11. ACCEPTANCE CHECKLIST
+- Can create an experiment and add a test isolate plus same-run Mu3 reference.
+- Can import sample_data.csv.
+- Shows raw observations and calculated CFU/mL / log10 CFU/mL.
+- Shows PAP curves and correct trapezoidal AUC calculations.
+- Shows test/Mu3 AUC ratio and configurable interpretation bands.
+- Blocks calculation when essential data/reference is missing.
+- QA flags link to specific rows.
+- Editing raw inputs forces recalculation.
+- Report includes protocol, calculation version, limitations and synthetic-data label.
+- No treatment recommendations or patient diagnosis language.

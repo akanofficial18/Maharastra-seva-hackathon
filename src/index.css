@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: "Plus Jakarta Sans", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
+    --font-sans: "Plus Jakarta Sans", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+    --gov-saffron: #ff9933;
+    --gov-india-green: #138808;
+    --gov-deep-green: #0b5d1e;
+    --gov-charcoal: #1f2933;
+    --gov-ivory: #f7f8f9;
+    --gov-border: #dce1e6;
+    --gov-chakra-blue: #1f3a8a;
+    --gov-amber: #b26a00;
+    --gov-red: #b3261e;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html,
+  body {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    background-color: var(--gov-ivory);
+    color: var(--gov-charcoal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+html.high-contrast body {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+html.high-contrast a,
+html.high-contrast button {
+  outline-offset: 2px;
+}
+
+html.high-contrast .gov-card {
+  border-color: #1f2933 !important;
+  border-width: 1.5px !important;
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #222b33 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only-break {
+    break-inside: avoid;
+  }
+  .print-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
